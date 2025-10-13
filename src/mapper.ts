@@ -1,10 +1,15 @@
 /* ---------------------------------- */
 /*   mapper.ts – OpenAI <==> Gemini   */
 /* ---------------------------------- */
-import { fetchAndEncode } from './remoteimage'
+
+import { Logger } from './Logger'
+const logger = new Logger('Mapper')
+
+import { fetchAndEncode } from './RemoteImage'
 import { z } from 'zod'
 import { ToolRegistry } from '@google/gemini-cli-core/dist/src/tools/tool-registry.js'
-import { getModel } from './chatwrapper'
+import { getModel } from './ChatWrapper'
+import { inspect } from 'util'
 
 /* ------------------------------------------------------------------ */
 type Part = { text?: string, inlineData?: { mimeType: string, data: string } }
@@ -60,7 +65,7 @@ export async function mapRequest(body: any, fetchFn: typeof fetch = fetch) {
         stream: body.stream
     }
 
-    console.log('Gemini request:', geminiReq)
+    logger.info(`Mapped Gemini request:\n${geminiReq}`)
 
     /* ---- Tool / function mapping ----------------------------------- */
     const tools = new ToolRegistry({} as any)
@@ -90,10 +95,10 @@ export function mapResponse(gResp: any) {
     const usage = gResp.usageMetadata ?? {}
     const hasError = typeof gResp.candidates === 'undefined'
 
-    console.log('Received response:', gResp)
+    logger.info(`Received Gemini response:\n${inspect(gResp, true, 1, true)}`)
 
     if (hasError) {
-        console.error('No candidates returned.')
+        logger.warn('Invalid response. No candidates returned.')
 
         return {
             error: {

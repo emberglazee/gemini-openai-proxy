@@ -1,4 +1,4 @@
-import { init, sendChat, sendChatStream, listModels, getModel } from '../src/chatwrapper'
+import { init, sendChat, sendChatStream, listModels, getModel } from '../src/ChatWrapper'
 import { describe, it, expect, mock } from 'bun:test'
 import { DEFAULT_GEMINI_MODEL } from '@google/gemini-cli-core'
 

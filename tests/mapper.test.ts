@@ -1,4 +1,4 @@
-import { mapRequest, mapResponse, mapStreamChunk } from '../src/mapper'
+import { mapRequest, mapResponse, mapStreamChunk } from '../src/Mapper'
 import { describe, it, expect, mock } from 'bun:test'
 
 describe('mapper', () => {

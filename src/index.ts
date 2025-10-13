@@ -1,9 +1,22 @@
+import { cyan, green, Logger, red, yellow } from './Logger'
+const logger = new Logger('Server')
+
 import http from 'http'
-import { sendChat, sendChatStream, listModels, init } from './chatwrapper'
-import { mapRequest, mapResponse, mapStreamChunk } from './mapper'
+import { sendChat, sendChatStream, listModels, init } from './ChatWrapper'
+import { mapRequest, mapResponse, mapStreamChunk } from './Mapper'
+
+const { PORT } = process.env
 
 // Basic config
-const PORT = Number(process.env.PORT ?? 11434)
+const port = (() => {
+    if (PORT) {
+        logger.info(`Port set by "env.PORT": "${green(PORT)}".`)
+        return Number(PORT)
+    } else {
+        logger.info(`Port defaulted to: "${yellow('11434')}".`)
+        return 11434
+    }
+})()
 
 // CORS helper
 function allowCors(res: http.ServerResponse) {
@@ -36,7 +49,7 @@ init()
 http.createServer(async (req, res) => {
     allowCors(res)
 
-    console.log('=>', req.method, req.url)
+    logger.info(`=> ${cyan(req.method)} ${cyan(req.url)}`)
 
     /* -------- pre-flight ---------- */
     if (req.method === 'OPTIONS') {
@@ -60,7 +73,7 @@ http.createServer(async (req, res) => {
         const body = await readJSON(req, res)
         if (!body) {
             res.writeHead(400).end()
-            console.log('HTTP 400 Proxy error: malformed JSON')
+            logger.warn(`HTTP ${red('400')} Proxy error: ${yellow('malformed JSON')}.`)
 
             return
         }
@@ -75,14 +88,14 @@ http.createServer(async (req, res) => {
                     Connection: 'keep-alive'
                 })
 
-                console.log('=> sending HTTP 200 streamed response')
+                logger.info(`=> Sending HTTP ${green('200')} streamed response...`)
 
                 for await (const chunk of sendChatStream({ ...geminiReq, tools })) {
                     res.write(`data: ${JSON.stringify(mapStreamChunk(chunk))}\n\n`)
                 }
                 res.end('data: [DONE]\n\n')
 
-                console.log('=> done sending streamed response')
+                logger.ok('=> Done sending streamed response.')
             } else {
                 const gResp = await sendChat({ ...geminiReq, tools })
                 const mapped = mapResponse(gResp)
@@ -90,18 +103,19 @@ http.createServer(async (req, res) => {
                 res.writeHead(code, { 'Content-Type': 'application/json' })
                 res.end(JSON.stringify(mapped))
 
-                console.log('✅ Replied HTTP ' + code + ' response', mapped)
+                logger.info(`✅ Replied HTTP ${green(code)} response:\n${mapped}`)
             }
-        } catch (err: any) {
-            console.error('HTTP 500 Proxy error =>', err)
+        } catch (err) {
+            const error = err instanceof Error ? err.message : String(err)
+            logger.warn(`HTTP 500 Proxy error =>\n${yellow(error)}`)
             res.writeHead(500, { 'Content-Type': 'application/json' })
-            res.end(JSON.stringify({ error: { message: err.message } }))
+            res.end(JSON.stringify({ error: { message: error } }))
         }
 
         return
     }
 
-    console.log('=> unknown request, returning HTTP 404')
     /* ------- anything else ------- */
+    logger.info(`=> Unknown request ${req.url}, returning HTTP 404.`)
     res.writeHead(404).end()
-}).listen(PORT, () => console.log(`OpenAI proxy listening on http://localhost:${PORT}`))
+}).listen(port, () => logger.ok(`OpenAI proxy available at ${green(`http://localhost:${port}`)}, add "/v1" for base url.`))

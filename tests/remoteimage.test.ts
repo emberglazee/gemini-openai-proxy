@@ -1,4 +1,4 @@
-import { fetchAndEncode } from '../src/remoteimage'
+import { fetchAndEncode } from '../src/RemoteImage'
 import { describe, it, expect, mock } from 'bun:test'
 
 describe('fetchAndEncode', () => {
@@ -22,7 +22,7 @@ describe('fetchAndEncode', () => {
             return new Response('Not Found', { status: 404 })
         })
 
-        await expect(fetchAndEncode('http://example.com/test.png', mockFetch as any)).rejects.toThrow(
+        expect(fetchAndEncode('http://example.com/test.png', mockFetch as any)).rejects.toThrow(
             'Failed to fetch image: http://example.com/test.png'
         )
     })

@@ -1,6 +1,8 @@
-// src/chatwrapper.ts
+import { Logger, cyan, green, yellow } from './Logger'
+const logger = new Logger('ChatWrapper')
+
 import {
-    AuthType as AuthTypeEnum,
+    AuthType,
     createContentGeneratorConfig,
     createContentGenerator,
     type ContentGenerator
@@ -8,21 +10,33 @@ import {
 import { DEFAULT_GEMINI_MODEL } from '@google/gemini-cli-core'
 import { OpenAI } from 'openai'
 
-const authType: AuthTypeEnum = (process.env.AUTH_TYPE ?? 'gemini-api-key') as AuthTypeEnum
+const { AUTH_TYPE, MODEL } = process.env
 
-console.log(`Auth type: ${authType}`)
+const authType = (() => {
+    if (AUTH_TYPE && Object.values(AuthType).includes(AUTH_TYPE as AuthType)) {
+        logger.info(`Auth type choice set by "env.AUTH_TYPE": "${green(AUTH_TYPE)}".`)
+        return AUTH_TYPE as AuthType
+    } else {
+        logger.info(`Auth type choice defaulted to: "${yellow('gemini-api-key')}".`)
+        return 'gemini-api-key' as AuthType
+    }
+})()
 
-const model = (process.env.MODEL ?? DEFAULT_GEMINI_MODEL)
-
-if (model) {
-    console.log(`Model override: ${model}`)
-}
+const model = (() => {
+    if (MODEL) {
+        logger.info(`Model choice set by "env.MODEL": "${green(MODEL)}".`)
+        return MODEL
+    } else {
+        logger.info(`Model choice defaulted to: "${yellow(DEFAULT_GEMINI_MODEL)}".`)
+        return DEFAULT_GEMINI_MODEL
+    }
+})()
 
 // !  >>> This only works with @google/gemini-cli-core@0.1.10 and below <<<   !
 // ! Newer versions require `gcConfig` in `createContentGenerator()` as well. !
-/* -------------------------------------------------------------- */
-/* 1.  Build the `ContentGenerator` like how gemini-cli does.     */
-/* -------------------------------------------------------------- */
+/* ------------------------------------------------------------- */
+/* 1.  Build the `ContentGenerator` like how gemini-cli does     */
+/* ------------------------------------------------------------- */
 let generatorPromise: Promise<ContentGenerator>
 let modelName: string
 
@@ -33,7 +47,7 @@ export function init() {
             authType
         )
         modelName = cfg.model
-        console.log(`Gemini CLI returned model: ${modelName}`)
+        logger.ok(`Gemini CLI returned model: "${cyan(modelName)}".`)
 
         return await createContentGenerator(cfg)
     })()
