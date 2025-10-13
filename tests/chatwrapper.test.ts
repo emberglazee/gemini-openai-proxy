@@ -2,7 +2,6 @@ import { init, sendChat, sendChatStream, listModels, getModel } from '../src/cha
 import { describe, it, expect, mock } from 'bun:test'
 import { DEFAULT_GEMINI_MODEL } from '@google/gemini-cli-core'
 
-// Mock the @google/gemini-cli-core module
 mock.module('@google/gemini-cli-core', () => ({
     createContentGeneratorConfig: async () => ({ model: DEFAULT_GEMINI_MODEL }),
     createContentGenerator: async () => ({
@@ -34,9 +33,9 @@ describe('chatwrapper', () => {
         }
     })
 
-    it('should list models', async () => {
+    it('should report the Gemini 2.5 Pro model', async () => {
         await init()
         const models = listModels()
-        expect(models).toEqual([{ id: DEFAULT_GEMINI_MODEL, object: 'model', owned_by: 'google' }])
+        expect(models[0]).toHaveProperty('id', 'gemini-2.5-pro')
     })
 })

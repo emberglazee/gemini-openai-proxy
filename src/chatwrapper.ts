@@ -6,6 +6,7 @@ import {
     type ContentGenerator
 } from '@google/gemini-cli-core/dist/src/core/contentGenerator.js'
 import { DEFAULT_GEMINI_MODEL } from '@google/gemini-cli-core'
+import { OpenAI } from 'openai'
 
 const authType: AuthTypeEnum = (process.env.AUTH_TYPE ?? 'gemini-api-key') as AuthTypeEnum
 
@@ -78,15 +79,30 @@ export async function* sendChatStream({
     for await (const chunk of stream) yield chunk
 }
 
-/* --------------------------------------------------------- */
-/* 3.  Minimal stubs so server.ts compiles (extend later)    */
-/* --------------------------------------------------------- */
-export function listModels() {
-    return [{
-        id: modelName,
-        object: 'model',
-        owned_by: 'google'
-    }]
+/* -------------------- */
+/* 3.  Minimal stubs    */
+/* -------------------- */
+export function listModels(): OpenAI.Models.Model[] {
+    return [
+        {
+            id: 'gemini-2.5-pro',
+            created: new Date().setFullYear(2025),
+            object: 'model',
+            owned_by: 'google'
+        },
+        {
+            id: 'gemini-2.5-flash',
+            created: new Date().setFullYear(2025),
+            object: 'model',
+            owned_by: 'google'
+        },
+        {
+            id: 'gemini-2.5-flash-mini',
+            created: new Date().setFullYear(2025),
+            object: 'model',
+            owned_by: 'google'
+        }
+    ]
 }
 
 export function getModel() {
