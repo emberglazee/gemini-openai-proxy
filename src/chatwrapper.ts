@@ -2,7 +2,8 @@
 import {
     AuthType as AuthTypeEnum,
     createContentGeneratorConfig,
-    createContentGenerator
+    createContentGenerator,
+    type ContentGenerator
 } from '@google/gemini-cli-core/dist/src/core/contentGenerator.js'
 import { DEFAULT_GEMINI_MODEL } from '@google/gemini-cli-core'
 
@@ -10,29 +11,34 @@ const authType: AuthTypeEnum = (process.env.AUTH_TYPE ?? 'gemini-api-key') as Au
 
 console.log(`Auth type: ${authType}`)
 
-const model = process.env.MODEL ?? DEFAULT_GEMINI_MODEL
+const model = (process.env.MODEL ?? DEFAULT_GEMINI_MODEL)
 
 if (model) {
     console.log(`Model override: ${model}`)
 }
-
-let modelName: string
 
 // !  >>> This only works with @google/gemini-cli-core@0.1.10 and below <<<   !
 // ! Newer versions require `gcConfig` in `createContentGenerator()` as well. !
 /* -------------------------------------------------------------- */
 /* 1.  Build the `ContentGenerator` like how gemini-cli does.     */
 /* -------------------------------------------------------------- */
-const generatorPromise = (async () => {
-    const cfg = await createContentGeneratorConfig(
-        model,
-        authType
-    )
-    modelName = cfg.model
-    console.log(`Gemini CLI returned model: ${modelName}`)
+let generatorPromise: Promise<ContentGenerator>
+let modelName: string
 
-    return await createContentGenerator(cfg)
-})()
+export function init() {
+    generatorPromise = (async () => {
+        const cfg = await createContentGeneratorConfig(
+            model,
+            authType
+        )
+        modelName = cfg.model
+        console.log(`Gemini CLI returned model: ${modelName}`)
+
+        return await createContentGenerator(cfg)
+    })()
+    return generatorPromise
+}
+
 
 /* ----------------------------------- */
 /* 2.  Helpers used in ./server.ts     */
@@ -47,7 +53,7 @@ export async function sendChat({
     generationConfig?: GenConfig
     tools?: unknown // accepted but ignored for now
 }) {
-    const generator: any = await generatorPromise
+    const generator = await generatorPromise
     return await generator.generateContent({
         model: modelName,
         contents,
@@ -63,7 +69,7 @@ export async function* sendChatStream({
     generationConfig?: GenConfig
     tools?: unknown
 }) {
-    const generator: any = await generatorPromise
+    const generator = await generatorPromise
     const stream = await generator.generateContentStream({
         model: modelName,
         contents,

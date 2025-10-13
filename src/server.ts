@@ -1,5 +1,5 @@
 import http from 'http'
-import { sendChat, sendChatStream, listModels } from './chatwrapper'
+import { sendChat, sendChatStream, listModels, init } from './chatwrapper'
 import { mapRequest, mapResponse, mapStreamChunk } from './mapper'
 
 /* ── basic config ─────────────────────────────────────────────────── */
@@ -32,6 +32,8 @@ function readJSON(
 }
 
 /* ── server ───────────────────────────────────────────────────────── */
+init()
+
 http
     .createServer(async (req, res) => {
         allowCors(res)

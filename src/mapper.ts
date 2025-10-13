@@ -1,6 +1,6 @@
-/* ---------------------------------------------------------------- */
-/*   mapper.ts – OpenAI <===> Gemini (with reasoning/1 M context)   */
-/* ---------------------------------------------------------------- */
+/* ---------------------------------- */
+/*   mapper.ts – OpenAI <==> Gemini   */
+/* ---------------------------------- */
 import { fetchAndEncode } from './remoteimage'
 import { z } from 'zod'
 import { ToolRegistry } from '@google/gemini-cli-core/dist/src/tools/tool-registry.js'
@@ -17,7 +17,7 @@ async function callLocalFunction(_name: string, _args: unknown) {
 /* ==================================== */
 /*   Request mapper: OpenAI => Gemini   */
 /* ==================================== */
-export async function mapRequest(body: any) {
+export async function mapRequest(body: any, fetchFn: typeof fetch = fetch) {
     const parts: Part[] = []
 
     /* ---- convert messages & vision --------------------------------- */
@@ -25,7 +25,7 @@ export async function mapRequest(body: any) {
         if (Array.isArray(m.content)) {
             for (const item of m.content) {
                 if (item.type === 'image_url') {
-                    parts.push({ inlineData: await fetchAndEncode(item.image_url.url) })
+                    parts.push({ inlineData: await fetchAndEncode(item.image_url.url, fetchFn) })
                 } else if (item.type === 'text') {
                     parts.push({ text: item.text })
                 }
@@ -43,8 +43,8 @@ export async function mapRequest(body: any) {
         ...(body.generationConfig ?? {}) // copy anything ST already merged
     }
     if (body.include_reasoning === true) {
-        generationConfig.enable_thoughts = true        // ← current flag
-        generationConfig.thinking_budget ??= 2048      // optional limit
+        generationConfig.enable_thoughts = true   // ← current flag
+        generationConfig.thinking_budget ??= 2048 // optional limit
     }
 
     /* ---- auto-enable reasoning & 1 M context ----------------------- */
@@ -83,9 +83,9 @@ export async function mapRequest(body: any) {
     return { geminiReq, tools }
 }
 
-/* ================================================================== */
-/* Non-stream response: Gemini ➞ OpenAI                                */
-/* ================================================================== */
+/* ========================================= */
+/*   Non-stream response: Gemini => OpenAI   */
+/* ========================================= */
 export function mapResponse(gResp: any) {
     const usage = gResp.usageMetadata ?? {}
     const hasError = typeof gResp.candidates === 'undefined'
@@ -122,16 +122,16 @@ export function mapResponse(gResp: any) {
     }
 }
 
-/* ================================================================== */
-/* Stream chunk mapper: Gemini ➞ OpenAI                                */
-/* ================================================================== */
+/* ========================================= */
+/*   Stream chunk mapper: Gemini ➞ OpenAI   */
+/* ========================================= */
 
 export function mapStreamChunk(chunk: any) {
     const part = chunk?.candidates?.[0]?.content?.parts?.[0] ?? {}
     const delta: any = { role: 'assistant' }
 
     if (part.thought === true) {
-        delta.content = `<think>${part.text ?? ''}`  // ST renders grey bubble
+        delta.content = `<think>${part.text ?? ''}` // ST renders grey bubble
     } else if (typeof part.text === 'string') {
         delta.content = part.text
     }
