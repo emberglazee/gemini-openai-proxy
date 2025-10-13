@@ -8,7 +8,7 @@ const logger = new Logger('Mapper')
 import { fetchAndEncode } from './RemoteImage'
 import { z } from 'zod'
 import { ToolRegistry } from '@google/gemini-cli-core/dist/src/tools/tool-registry.js'
-import { getModel } from './ChatWrapper'
+
 import { inspect } from 'util'
 
 /* ------------------------------------------------------------------ */
@@ -60,12 +60,13 @@ export async function mapRequest(body: any, fetchFn: typeof fetch = fetch) {
     generationConfig.maxInputTokens ??= 1_000_000 // lift context cap
 
     const geminiReq = {
+        model: body.model,
         contents: [{ role: 'user', parts }],
         generationConfig,
         stream: body.stream
     }
 
-    logger.info(`Mapped Gemini request:\n${geminiReq}`)
+    logger.info(`Mapped Gemini request:\n${inspect(geminiReq, true, 1, true)}}`)
 
     /* ---- Tool / function mapping ----------------------------------- */
     const tools = new ToolRegistry({} as any)
@@ -91,7 +92,7 @@ export async function mapRequest(body: any, fetchFn: typeof fetch = fetch) {
 /* ========================================= */
 /*   Non-stream response: Gemini => OpenAI   */
 /* ========================================= */
-export function mapResponse(gResp: any) {
+export function mapResponse(gResp: any, model: string) {
     const usage = gResp.usageMetadata ?? {}
     const hasError = typeof gResp.candidates === 'undefined'
 
@@ -111,7 +112,7 @@ export function mapResponse(gResp: any) {
         id: `chatcmpl-${Date.now()}`,
         object: 'chat.completion',
         created: Math.floor(Date.now() / 1000),
-        model: getModel(),
+        model: model,
         choices: [
             {
                 index: 0,
@@ -131,7 +132,7 @@ export function mapResponse(gResp: any) {
 /*   Stream chunk mapper: Gemini ➞ OpenAI   */
 /* ========================================= */
 
-export function mapStreamChunk(chunk: any) {
+export function mapStreamChunk(chunk: any, model: string) {
     const part = chunk?.candidates?.[0]?.content?.parts?.[0] ?? {}
     const delta: any = { role: 'assistant' }
 
@@ -140,5 +141,11 @@ export function mapStreamChunk(chunk: any) {
     } else if (typeof part.text === 'string') {
         delta.content = part.text
     }
-    return { choices: [ { delta, index: 0 } ] }
+    return {
+        id: `chatcmpl-${Date.now()}`,
+        object: 'chat.completion.chunk',
+        created: Math.floor(Date.now() / 1000),
+        model: model,
+        choices: [ { delta, index: 0 } ]
+    }
 }

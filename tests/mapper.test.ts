@@ -5,6 +5,7 @@ describe('mapper', () => {
     describe('mapRequest', () => {
         it('should map an OpenAI request to a Gemini request', async () => {
             const body = {
+                model: 'gemini-2.5-pro',
                 messages: [{ content: 'test' }],
                 temperature: 0.5,
                 max_tokens: 100,
@@ -14,6 +15,7 @@ describe('mapper', () => {
             const { geminiReq } = await mapRequest(body)
 
             expect(geminiReq).toEqual({
+                model: 'gemini-2.5-pro',
                 contents: [{ role: 'user', parts: [{ text: 'test' }] }],
                 generationConfig: {
                     temperature: 0.5,
@@ -27,6 +29,7 @@ describe('mapper', () => {
 
         it('should handle image URLs', async () => {
             const body = {
+                model: 'gemini-2.5-pro',
                 messages: [
                     {
                         content: [
@@ -63,9 +66,11 @@ describe('mapper', () => {
                 },
                 candidates: [{}]
             }
+            const model = 'gemini-2.5-pro'
 
-            const result = mapResponse(gResp)
+            const result = mapResponse(gResp, model)
 
+            expect(result.model).toBe(model)
             expect(result.choices?.[0].message.content).toBe('test')
             expect(result.usage).toEqual({
                 prompt_tokens: 10,
@@ -81,7 +86,7 @@ describe('mapper', () => {
                 }
             }
 
-            const result = mapResponse(gResp)
+            const result = mapResponse(gResp, 'gemini-2.5-pro')
 
             expect(result.error?.message).toBe('test reason')
         })
@@ -98,10 +103,13 @@ describe('mapper', () => {
                     }
                 ]
             }
+            const model = 'gemini-2.5-pro'
 
-            const result = mapStreamChunk(chunk)
+            const result = mapStreamChunk(chunk, model)
 
+            expect(result.model).toBe(model)
             expect(result.choices[0].delta.content).toBe('test')
+            expect(result.object).toBe('chat.completion.chunk')
         })
     })
 })

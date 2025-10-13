@@ -91,14 +91,14 @@ http.createServer(async (req, res) => {
                 logger.info(`=> Sending HTTP ${green('200')} streamed response...`)
 
                 for await (const chunk of sendChatStream({ ...geminiReq, tools })) {
-                    res.write(`data: ${JSON.stringify(mapStreamChunk(chunk))}\n\n`)
+                    res.write(`data: ${JSON.stringify(mapStreamChunk(chunk, geminiReq.model))}\n\n`)
                 }
                 res.end('data: [DONE]\n\n')
 
                 logger.ok('=> Done sending streamed response.')
             } else {
                 const gResp = await sendChat({ ...geminiReq, tools })
-                const mapped = mapResponse(gResp)
+                const mapped = mapResponse(gResp, geminiReq.model)
                 const code = 200
                 res.writeHead(code, { 'Content-Type': 'application/json' })
                 res.end(JSON.stringify(mapped))
