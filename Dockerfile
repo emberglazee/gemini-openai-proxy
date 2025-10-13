@@ -1,15 +1,15 @@
-FROM node:lts-alpine
+FROM oven/bun:alpine
 
 ENV PORT=80
 
 WORKDIR /app
 
-COPY package*.json ./
+COPY package.json bun.lock* ./
 
-RUN npm install
+RUN bun install
 
 COPY . .
 
 EXPOSE ${PORT}
 
-CMD ["npm", "start"]
+CMD ["bun", "start"]
