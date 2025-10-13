@@ -20,13 +20,13 @@ Plug-and-play with clients that already speak OpenAI like SillyTavern, llama.cpp
 
 ## Quick start
 
-### With npm
+### With bun
 
 ```bash
 git clone https://github.com/Brioch/gemini-openai-proxy
 cd gemini-openai-proxy
-npm i
-npm start # launch (runs on port 11434 by default)
+bun install
+bun start # launch (runs on port 11434 by default)
 ```
 
 ### With Docker
@@ -67,10 +67,8 @@ curl -X POST http://localhost:11434/v1/chat/completions \
 ### SillyTavern settings
 
 Chat completion
-API Base URL http://127.0.0.1:11434/v1
-
-
+API Base URL <http://127.0.0.1:11434/v1>
 
 ## License
 
-MIT – free for personal & commercial use. Forked from https://huggingface.co/engineofperplexity/gemini-openai-proxy
+MIT – free for personal & commercial use. Forked from <https://huggingface.co/engineofperplexity/gemini-openai-proxy>
