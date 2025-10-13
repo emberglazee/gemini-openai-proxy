@@ -57,7 +57,7 @@ export async function mapRequest(body: any, fetchFn: typeof fetch = fetch) {
         generationConfig.thinking = true
         generationConfig.thinking_budget ??= 2048
     }
-    generationConfig.maxInputTokens ??= 1_000_000 // lift context cap
+    generationConfig.maxInputTokens ??= 1_048_576 // Exact 2^20 input token limit
 
     const geminiReq = {
         model: body.model,
