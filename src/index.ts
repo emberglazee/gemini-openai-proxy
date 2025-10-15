@@ -4,6 +4,7 @@ const logger = new Logger('Server')
 import http from 'http'
 import { sendChat, sendChatStream, listModels, init } from './ChatWrapper'
 import { mapRequest, mapResponse, mapStreamChunk } from './Mapper'
+import type OpenAI from 'openai'
 
 const { PORT } = process.env
 
@@ -70,7 +71,7 @@ http.createServer(async (req, res) => {
 
     /* ---- /v1/chat/completions ---- */
     if (req.url === '/v1/chat/completions' && req.method === 'POST') {
-        const body = await readJSON(req, res)
+        const body: OpenAI.ChatCompletionCreateParams | null = await readJSON(req, res)
         if (!body) {
             res.writeHead(400).end()
             logger.warn(`HTTP ${red('400')} Proxy error: ${yellow('malformed JSON')}.`)

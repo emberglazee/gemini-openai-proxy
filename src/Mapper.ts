@@ -11,6 +11,9 @@ import { ToolRegistry } from '@google/gemini-cli-core/dist/src/tools/tool-regist
 
 import { inspect } from 'util'
 
+import { GenerateContentResponse } from '@google/genai'
+import type OpenAI from 'openai'
+
 /* ------------------------------------------------------------------ */
 type Part = { text?: string, inlineData?: { mimeType: string, data: string } }
 
@@ -22,7 +25,7 @@ async function callLocalFunction(_name: string, _args: unknown) {
 /* ==================================== */
 /*   Request mapper: OpenAI => Gemini   */
 /* ==================================== */
-export async function mapRequest(body: any, fetchFn: typeof fetch = fetch) {
+export async function mapRequest(body: OpenAI.ChatCompletionCreateParams, fetchFn: typeof fetch = fetch) {
     const parts: Part[] = []
 
     /* ---- convert messages & vision --------------------------------- */
@@ -36,27 +39,21 @@ export async function mapRequest(body: any, fetchFn: typeof fetch = fetch) {
                 }
             }
         } else {
-            parts.push({ text: m.content })
+            parts.push({ text: m.content ?? undefined })
         }
     }
 
     /* ---- base generationConfig ------------------------------------- */
     const generationConfig: Record<string, unknown> = {
         temperature: body.temperature,
-        maxOutputTokens: body.max_tokens,
-        topP: body.top_p,
-        ...(body.generationConfig ?? {}) // copy anything ST already merged
+        maxOutputTokens: body.max_completion_tokens,
+        topP: body.top_p
     }
-    if (body.include_reasoning === true) {
+    if (body.reasoning_effort) {
         generationConfig.enable_thoughts = true   // ← current flag
-        generationConfig.thinking_budget ??= 2048 // optional limit
+        generationConfig.thinking_budget ??= 8092 // optional limit
     }
 
-    /* ---- auto-enable reasoning & 1 M context ----------------------- */
-    if (body.include_reasoning === true && generationConfig.thinking !== true) {
-        generationConfig.thinking = true
-        generationConfig.thinking_budget ??= 2048
-    }
     generationConfig.maxInputTokens ??= 1_048_576 // Exact 2^20 input token limit
 
     const geminiReq = {
@@ -71,9 +68,9 @@ export async function mapRequest(body: any, fetchFn: typeof fetch = fetch) {
     /* ---- Tool / function mapping ----------------------------------- */
     const tools = new ToolRegistry({} as any)
 
-    if (body.functions?.length) {
+    if (body.tools?.length) {
         const reg = tools as any
-        body.functions.forEach((fn: any) =>
+        body.tools.forEach((fn: any) =>
             reg.registerTool(
                 fn.name,
                 {
@@ -92,18 +89,17 @@ export async function mapRequest(body: any, fetchFn: typeof fetch = fetch) {
 /* ========================================= */
 /*   Non-stream response: Gemini => OpenAI   */
 /* ========================================= */
-export function mapResponse(gResp: any, model: string) {
-    const usage = gResp.usageMetadata ?? {}
-    const hasError = typeof gResp.candidates === 'undefined'
+export function mapResponse(res: GenerateContentResponse, model: string): OpenAI.ChatCompletion | { error: { message: string } } {
+    const hasError = typeof res.candidates === 'undefined'
 
-    logger.info(`Received Gemini response:\n${inspect(gResp, true, 1, true)}`)
+    logger.info(`Received Gemini response:\n${inspect(res, true, 1, true)}`)
 
     if (hasError) {
         logger.warn('Invalid response. No candidates returned.')
 
         return {
             error: {
-                message: gResp?.promptFeedback?.blockReason ?? 'No candidates returned.'
+                message: res?.promptFeedback?.blockReason ?? 'No candidates returned.'
             }
         }
     }
@@ -113,28 +109,33 @@ export function mapResponse(gResp: any, model: string) {
         object: 'chat.completion',
         created: Math.floor(Date.now() / 1000),
         model: model,
-        choices: [
-            {
-                index: 0,
-                message: { role: 'assistant', content: gResp.text },
-                finish_reason: 'stop'
-            }
-        ],
+        choices: [{
+            index: 0,
+            message: { role: 'assistant', content: res.text ?? null, refusal: null },
+            finish_reason: 'stop',
+            logprobs: null
+        }],
         usage: {
-            prompt_tokens: usage.promptTokens ?? 0,
-            completion_tokens: usage.candidatesTokens ?? 0,
-            total_tokens: usage.totalTokens ?? 0
+            completion_tokens: res.usageMetadata?.candidatesTokenCount ?? 0,
+            prompt_tokens: res.usageMetadata?.promptTokenCount ?? 0,
+            total_tokens: res.usageMetadata?.totalTokenCount ?? 0,
+            completion_tokens_details: {
+                reasoning_tokens: res.usageMetadata?.thoughtsTokenCount
+            },
+            prompt_tokens_details: {
+                cached_tokens: res.usageMetadata?.cachedContentTokenCount
+            }
         }
     }
 }
 
 /* ========================================= */
-/*   Stream chunk mapper: Gemini ➞ OpenAI   */
+/*   Stream chunk mapper: Gemini => OpenAI   */
 /* ========================================= */
 
-export function mapStreamChunk(chunk: any, model: string) {
+export function mapStreamChunk(chunk: GenerateContentResponse, model: string): OpenAI.ChatCompletionChunk {
     const part = chunk?.candidates?.[0]?.content?.parts?.[0] ?? {}
-    const delta: any = { role: 'assistant' }
+    const delta = { role: 'assistant' as const, content: '' }
 
     if (part.thought === true) {
         delta.content = `<think>${part.text ?? ''}` // ST renders grey bubble
@@ -145,7 +146,22 @@ export function mapStreamChunk(chunk: any, model: string) {
         id: `chatcmpl-${Date.now()}`,
         object: 'chat.completion.chunk',
         created: Math.floor(Date.now() / 1000),
-        model: model,
-        choices: [ { delta, index: 0 } ]
+        model,
+        choices: [{
+            delta, index: 0,
+            finish_reason: null
+        }],
+        service_tier: 'default',
+        usage: {
+            completion_tokens: chunk.usageMetadata?.candidatesTokenCount ?? 0,
+            prompt_tokens: chunk.usageMetadata?.promptTokenCount ?? 0,
+            total_tokens: chunk.usageMetadata?.totalTokenCount ?? 0,
+            completion_tokens_details: {
+                reasoning_tokens: chunk.usageMetadata?.thoughtsTokenCount
+            },
+            prompt_tokens_details: {
+                cached_tokens: chunk.usageMetadata?.cachedContentTokenCount
+            }
+        }
     }
 }
