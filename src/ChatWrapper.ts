@@ -9,6 +9,8 @@ import {
 } from '@google/gemini-cli-core/dist/src/core/contentGenerator.js'
 import { OpenAI } from 'openai'
 
+import type { ContentListUnion } from '@google/genai'
+
 const { AUTH_TYPE } = process.env
 
 const authType = (() => {
@@ -63,7 +65,7 @@ export async function sendChat({
     generationConfig = {}
 }: {
     model: string
-    contents: any[]
+    contents: ContentListUnion
     generationConfig?: GenConfig
     tools?: unknown // accepted but ignored for now
 }) {
@@ -85,7 +87,7 @@ export async function* sendChatStream({
     generationConfig = {}
 }: {
     model: string
-    contents: any[]
+    contents: ContentListUnion
     generationConfig?: GenConfig
     tools?: unknown
 }) {

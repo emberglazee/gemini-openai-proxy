@@ -11,7 +11,7 @@ import { ToolRegistry } from '@google/gemini-cli-core/dist/src/tools/tool-regist
 
 import { inspect } from 'util'
 
-import { GenerateContentResponse } from '@google/genai'
+import { GenerateContentResponse, type GenerateContentParameters } from '@google/genai'
 import type OpenAI from 'openai'
 
 /* ------------------------------------------------------------------ */
@@ -25,7 +25,7 @@ async function callLocalFunction(_name: string, _args: unknown) {
 /* ==================================== */
 /*   Request mapper: OpenAI => Gemini   */
 /* ==================================== */
-export async function mapRequest(body: OpenAI.ChatCompletionCreateParams, fetchFn: typeof fetch = fetch) {
+export async function mapRequest(body: OpenAI.ChatCompletionCreateParams, fetchFn: typeof fetch = fetch): Promise<{ tools?: ToolRegistry } & GenerateContentParameters> {
     const parts: Part[] = []
 
     /* ---- convert messages & vision --------------------------------- */
@@ -83,7 +83,7 @@ export async function mapRequest(body: OpenAI.ChatCompletionCreateParams, fetchF
         )
     }
 
-    return { geminiReq, tools }
+    return { ...geminiReq, tools: body.tools?.length ? tools : undefined }
 }
 
 /* ========================================= */

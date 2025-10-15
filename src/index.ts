@@ -80,7 +80,7 @@ http.createServer(async (req, res) => {
         }
 
         try {
-            const { geminiReq, tools } = await mapRequest(body)
+            const { tools, ...geminiReq } = await mapRequest(body)
 
             if (body.stream) {
                 res.writeHead(200, {
@@ -98,8 +98,8 @@ http.createServer(async (req, res) => {
 
                 logger.ok('=> Done sending streamed response.')
             } else {
-                const gResp = await sendChat({ ...geminiReq, tools })
-                const mapped = mapResponse(gResp, geminiReq.model)
+                const geminiResp = await sendChat({ ...geminiReq, tools })
+                const mapped = mapResponse(geminiResp, geminiReq.model)
                 const code = 200
                 res.writeHead(code, { 'Content-Type': 'application/json' })
                 res.end(JSON.stringify(mapped))
