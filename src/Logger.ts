@@ -7,12 +7,22 @@ export const { blue, cyan, green, red, yellow } = chalk
 
 const esmodules = !!import.meta.url
 
+let logFile = ''
+
+function _createLogFile(date = formatDate()) {
+    if (logFile) return
+    const logsPath = path.join(esmodules ? path.dirname(url.fileURLToPath(import.meta.url)) : __dirname, '../logs')
+    if (!fs.existsSync(logsPath)) fs.mkdirSync(logsPath, { recursive: true })
+    const newLogFile = path.join(logsPath, `${date}.log`)
+    fs.writeFileSync(newLogFile, '')
+    logFile = newLogFile
+}
+
 export class Logger {
-    file = ''
     module: string | undefined
 
     constructor(module?: string) {
-        this._createLogFile()
+        _createLogFile()
         this.module = module
     }
     private _log(level: LogLevel, data: JSONResolvable) {
@@ -36,16 +46,8 @@ export class Logger {
         this._log('debug', data)
     }
 
-    _createLogFile(date = formatDate()) {
-        const logsPath = path.join(esmodules ? path.dirname(url.fileURLToPath(import.meta.url)) : __dirname, '../../logs')
-        if (!fs.existsSync(logsPath)) fs.mkdirSync(logsPath)
-        const logFile = path.join(logsPath, `${date}.log`)
-        fs.writeFileSync(logFile, '')
-        this.file = logFile
-        return logFile
-    }
     writeLogLine(str: string) {
-        fs.appendFileSync(this.file, `${str}\n`)
+        fs.appendFileSync(logFile, `${str}\n`)
     }
 }
 export function formatDate() {
